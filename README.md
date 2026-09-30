@@ -32,3 +32,26 @@ Todos tus datos quedan **sólo en tu teléfono**. La app no tiene cuentas ni ser
 ## 👤 Autor
 
 Hecha por **Christian Alfonzo** · Instagram [@a__chris27](https://instagram.com/a__chris27)
+
+## 🛠️ Para desarrolladores
+
+Es una app en **Flutter** (Dart). Si querés modificarla:
+
+```bash
+git clone https://github.com/ChrisAlf27/mis-vehiculos.git
+cd mis-vehiculos
+flutter pub get
+flutter run            # con el teléfono conectado por USB
+flutter test
+flutter build apk --release
+```
+
+- **Firma**: el release se firma con la clave definida en `~/.claves-android/mis_vehiculos_key.properties`. Si ese archivo no existe, se firma con la clave de debug, así que compila igual. Ojo: un APK firmado con otra clave no se puede instalar encima del oficial (hay que desinstalar primero).
+- **Textos**: todo lo que ve el usuario está en `lib/l10n/app_es.arb` y `app_en.arb`. Después de tocarlos, `flutter gen-l10n`.
+- **Base de datos**: SQLite con migraciones en `lib/services/database_service.dart`. Si cambiás el esquema, subí `schemaVersion` y agregá el paso en `_onUpgrade`.
+- **Actualizaciones**: la app consulta el último release de `AppInfo.githubRepo` (`lib/app_info.dart`). Si publicás tu propia versión, cambiá ese repo para que no le avise a tus usuarios de las versiones de este.
+- **Publicar una versión**: subí `version:` en `pubspec.yaml` y `AppInfo.version` (tienen que coincidir), compilá y creá un release con el tag `vX.Y.Z` y el `.apk` adjunto. Las notas del release son lo que la app muestra en el aviso.
+
+## 📄 Licencia
+
+[MIT](LICENSE): podés usarla, modificarla y redistribuirla, manteniendo el aviso de autor.
