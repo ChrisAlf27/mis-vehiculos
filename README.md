@@ -49,7 +49,7 @@ flutter build apk --release
 - **Firma**: el release se firma con la clave definida en `~/.claves-android/mis_vehiculos_key.properties`. Si ese archivo no existe, se firma con la clave de debug, así que compila igual. Ojo: un APK firmado con otra clave no se puede instalar encima del oficial (hay que desinstalar primero).
 - **Textos**: todo lo que ve el usuario está en `lib/l10n/app_es.arb` y `app_en.arb`. Después de tocarlos, `flutter gen-l10n`.
 - **Base de datos**: SQLite con migraciones en `lib/services/database_service.dart`. Si cambiás el esquema, subí `schemaVersion` y agregá el paso en `_onUpgrade`.
-- **Actualizaciones**: la app consulta el último release de `AppInfo.githubRepo` (`lib/app_info.dart`). Si publicás tu propia versión, cambiá ese repo para que no le avise a tus usuarios de las versiones de este.
+- **Actualizaciones**: la app pregunta por versiones nuevas al repo que dice `AppInfo.githubRepo` (`lib/app_info.dart`). Si repartís tu propia versión modificada, poné ahí tu repo: si no, a quienes usen la tuya les van a llegar los avisos de las versiones oficiales, y ese APK no se instala encima del tuyo porque está firmado con otra clave.
 - **Publicar una versión**: subí `version:` en `pubspec.yaml` y `AppInfo.version` (tienen que coincidir), compilá y creá un release con el tag `vX.Y.Z` y el `.apk` adjunto. Las notas del release son lo que la app muestra en el aviso.
 
 ## 📄 Licencia
