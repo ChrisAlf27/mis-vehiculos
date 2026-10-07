@@ -1079,7 +1079,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportBackupSub.
   ///
   /// In es, this message translates to:
-  /// **'Un archivo con todo, para guardarlo o pasarlo a otro teléfono'**
+  /// **'Se guarda en Descargas/MisVehiculos, para tenerlo o pasarlo a otro teléfono'**
   String get exportBackupSub;
 
   /// No description provided for @restoreBackup.
@@ -1627,6 +1627,264 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'mantenimiento'**
   String get fileSuffixMaintenance;
+
+  /// No description provided for @usedVehicleTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Es usado'**
+  String get usedVehicleTitle;
+
+  /// No description provided for @usedVehicleSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Tuvo otro dueño: después te pregunto qué sabés de cada mantenimiento'**
+  String get usedVehicleSubtitle;
+
+  /// No description provided for @purchaseDate.
+  ///
+  /// In es, this message translates to:
+  /// **'Fecha de compra'**
+  String get purchaseDate;
+
+  /// No description provided for @purchaseDateUnset.
+  ///
+  /// In es, this message translates to:
+  /// **'No la sé (cuenta desde que lo cargaste)'**
+  String get purchaseDateUnset;
+
+  /// No description provided for @statusCheck.
+  ///
+  /// In es, this message translates to:
+  /// **'REVISAR'**
+  String get statusCheck;
+
+  /// No description provided for @needsCheckText.
+  ///
+  /// In es, this message translates to:
+  /// **'Historial desconocido: conviene revisarlo. Cuando lo hagas, registralo y la app calcula el próximo.'**
+  String get needsCheckText;
+
+  /// No description provided for @baselineAssumed.
+  ///
+  /// In es, this message translates to:
+  /// **'Se asume hecho al comprarlo ({date} · {km} km)'**
+  String baselineAssumed(String date, String km);
+
+  /// No description provided for @baselinePrevious.
+  ///
+  /// In es, this message translates to:
+  /// **'Dueño anterior (aprox.): {detail}'**
+  String baselinePrevious(String detail);
+
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Ponelo al día'**
+  String get onboardingTitle;
+
+  /// No description provided for @onboardingIntro.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Qué sabés de cada mantenimiento? Si no sabés, elegí si conviene revisarlo o si asumís que está hecho. Ya te marqué una opción según la importancia.'**
+  String get onboardingIntro;
+
+  /// No description provided for @modeKnown.
+  ///
+  /// In es, this message translates to:
+  /// **'Sé cuándo'**
+  String get modeKnown;
+
+  /// No description provided for @modeCheck.
+  ///
+  /// In es, this message translates to:
+  /// **'Revisar'**
+  String get modeCheck;
+
+  /// No description provided for @modeAssumed.
+  ///
+  /// In es, this message translates to:
+  /// **'Asumir hecho'**
+  String get modeAssumed;
+
+  /// No description provided for @knownKmLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Km aprox.'**
+  String get knownKmLabel;
+
+  /// No description provided for @knownDateLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Fecha aprox.'**
+  String get knownDateLabel;
+
+  /// No description provided for @knownHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Completá lo que sepas, nada es obligatorio.'**
+  String get knownHint;
+
+  /// No description provided for @noDate.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin fecha'**
+  String get noDate;
+
+  /// No description provided for @onboardingLater.
+  ///
+  /// In es, this message translates to:
+  /// **'Después'**
+  String get onboardingLater;
+
+  /// No description provided for @onboardingScheduleTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Agendar un turno?'**
+  String get onboardingScheduleTitle;
+
+  /// No description provided for @onboardingScheduleBody.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{Marcaste 1 mantenimiento para revisar. ¿Armamos un turno con el mecánico?} other{Marcaste {count} mantenimientos para revisar. ¿Armamos un turno con el mecánico?}}'**
+  String onboardingScheduleBody(int count);
+
+  /// No description provided for @scheduleNow.
+  ///
+  /// In es, this message translates to:
+  /// **'Agendar'**
+  String get scheduleNow;
+
+  /// No description provided for @notNow.
+  ///
+  /// In es, this message translates to:
+  /// **'Ahora no'**
+  String get notNow;
+
+  /// No description provided for @onboardingBanner.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 mantenimiento sin historial} other{{count} mantenimientos sin historial}}'**
+  String onboardingBanner(int count);
+
+  /// No description provided for @onboardingBannerSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Contale a la app qué sabés del dueño anterior.'**
+  String get onboardingBannerSubtitle;
+
+  /// No description provided for @previousOwnerHistory.
+  ///
+  /// In es, this message translates to:
+  /// **'Historial del dueño anterior'**
+  String get previousOwnerHistory;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In es, this message translates to:
+  /// **'Backup guardado en Descargas/MisVehiculos'**
+  String get backupSaved;
+
+  /// No description provided for @shareAction.
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir'**
+  String get shareAction;
+
+  /// No description provided for @restorePickTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Elegí un backup'**
+  String get restorePickTitle;
+
+  /// No description provided for @restoreNoneFound.
+  ///
+  /// In es, this message translates to:
+  /// **'No hay backups en Descargas/MisVehiculos. Si lo trajiste de otro teléfono, buscalo con el botón de abajo.'**
+  String get restoreNoneFound;
+
+  /// No description provided for @restoreOtherFile.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar otro archivo'**
+  String get restoreOtherFile;
+
+  /// No description provided for @restoreChooseTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Qué querés traer?'**
+  String get restoreChooseTitle;
+
+  /// No description provided for @restoreFrom.
+  ///
+  /// In es, this message translates to:
+  /// **'Backup del {date}'**
+  String restoreFrom(String date);
+
+  /// No description provided for @restoreAlsoSection.
+  ///
+  /// In es, this message translates to:
+  /// **'Además'**
+  String get restoreAlsoSection;
+
+  /// No description provided for @restoreHistory.
+  ///
+  /// In es, this message translates to:
+  /// **'Historial de mantenimientos y turnos'**
+  String get restoreHistory;
+
+  /// No description provided for @restoreHistorySub.
+  ///
+  /// In es, this message translates to:
+  /// **'Si lo apagás, vienen sólo los vehículos con sus km y su configuración'**
+  String get restoreHistorySub;
+
+  /// No description provided for @restoreMechanics.
+  ///
+  /// In es, this message translates to:
+  /// **'Talleres'**
+  String get restoreMechanics;
+
+  /// No description provided for @restoreMechanicsSub.
+  ///
+  /// In es, this message translates to:
+  /// **'Se suman los que no tengas'**
+  String get restoreMechanicsSub;
+
+  /// No description provided for @restoreAlreadyHave.
+  ///
+  /// In es, this message translates to:
+  /// **'Ya lo tenés: se reemplaza por el del backup'**
+  String get restoreAlreadyHave;
+
+  /// No description provided for @restoreImportSelected.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{Traer 1 vehículo} other{Traer {count} vehículos}}'**
+  String restoreImportSelected(int count);
+
+  /// No description provided for @restoreReplaceSome.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 vehículo que ya tenés se reemplaza por el del backup, con todo su historial. El resto de tus datos no se toca.} other{{count} vehículos que ya tenés se reemplazan por los del backup, con todo su historial. El resto de tus datos no se toca.}}'**
+  String restoreReplaceSome(int count);
+
+  /// No description provided for @importAction.
+  ///
+  /// In es, this message translates to:
+  /// **'Traer'**
+  String get importAction;
+
+  /// No description provided for @importDone.
+  ///
+  /// In es, this message translates to:
+  /// **'Datos importados.'**
+  String get importDone;
+
+  /// No description provided for @restoreReplaceAll.
+  ///
+  /// In es, this message translates to:
+  /// **'Reemplazar todos mis datos con este backup'**
+  String get restoreReplaceAll;
 }
 
 class _AppLocalizationsDelegate

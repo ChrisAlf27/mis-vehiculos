@@ -1,4 +1,5 @@
 import 'appointment.dart';
+import 'maintenance_baseline.dart';
 
 class MaintenanceRecord {
   final int? id;
@@ -77,7 +78,7 @@ class MaintenanceRecord {
       );
 }
 
-enum RecommendationStatus { overdue, dueSoon, pendingRecord, ok }
+enum RecommendationStatus { overdue, dueSoon, needsCheck, pendingRecord, ok }
 
 class MaintenanceRecommendation {
   final String maintenanceTypeId;
@@ -101,6 +102,10 @@ class MaintenanceRecommendation {
   /// antes de usar la app, así que se pide cargar el último servicio.
   final bool pendingRecord;
 
+  /// Sin registros propios: de dónde sale el punto de partida (vehículo usado).
+  /// Con [BaselineMode.check] no hay cálculo: se recomienda revisarlo.
+  final BaselineMode? baseline;
+
   final int dueSoonKm;
   final int dueSoonDays;
 
@@ -123,11 +128,18 @@ class MaintenanceRecommendation {
     required this.currentKm,
     this.estimatedKmDate,
     this.pendingRecord = false,
+    this.baseline,
     this.dueSoonKm = 500,
     this.dueSoonDays = 14,
     this.hasOverride = false,
     this.appointment,
   });
+
+  bool get needsCheck => baseline == BaselineMode.check;
+
+  /// Sin un último servicio desde el cual calcular: no puede estar vencido ni
+  /// próximo.
+  bool get _noCalculation => pendingRecord || needsCheck;
 
   int get kmRemaining => nextDueKm - currentKm;
   int get daysRemaining => nextDueDate.difference(DateTime.now()).inDays;
@@ -138,7 +150,7 @@ class MaintenanceRecommendation {
 
   bool get isOverdueKm => kmRemaining < 0 && intervalKm > 0;
   bool get isOverdueDate => daysRemaining < 0 && intervalDays > 0;
-  bool get isOverdue => !pendingRecord && (isOverdueKm || isOverdueDate);
+  bool get isOverdue => !_noCalculation && (isOverdueKm || isOverdueDate);
 
   // La estimación por uso sólo adelanta el aviso a "próximo": vencido se
   // decide con el km real cargado, nunca con uno proyectado.
@@ -148,7 +160,7 @@ class MaintenanceRecommendation {
       estimatedDaysRemaining! < dueSoonDays;
 
   bool get isDueSoon =>
-      !pendingRecord &&
+      !_noCalculation &&
       !isOverdue &&
       ((intervalKm > 0 && kmRemaining < dueSoonKm) ||
           (intervalDays > 0 && daysRemaining < dueSoonDays) ||
@@ -158,6 +170,7 @@ class MaintenanceRecommendation {
     if (pendingRecord) return RecommendationStatus.pendingRecord;
     if (isOverdue) return RecommendationStatus.overdue;
     if (isDueSoon) return RecommendationStatus.dueSoon;
+    if (needsCheck) return RecommendationStatus.needsCheck;
     return RecommendationStatus.ok;
   }
 

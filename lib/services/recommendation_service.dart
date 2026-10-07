@@ -3,6 +3,7 @@ import '../models/maintenance_record.dart';
 import '../models/app_settings.dart';
 import '../models/appointment.dart';
 import '../models/km_reading.dart';
+import '../models/maintenance_baseline.dart';
 import 'database_service.dart';
 
 class RecommendationService {
@@ -40,6 +41,22 @@ class RecommendationService {
     );
   }
 
+  /// Desde dónde se cuenta un mantenimiento sin registros de un vehículo
+  /// usado. Lo que no se sabe del último servicio se toma de la compra. Null si
+  /// no hay punto de partida: no es usado, no se respondió o hay que revisarlo.
+  static KmReading? baselineStart(
+      Vehicle vehicle, MaintenanceBaseline? baseline) {
+    if (!vehicle.used || baseline == null) return null;
+    return switch (baseline.mode) {
+      BaselineMode.check => null,
+      BaselineMode.assumed => KmReading(
+          date: vehicle.acquiredDate, km: vehicle.acquiredOdometer),
+      BaselineMode.known => KmReading(
+          date: baseline.date ?? vehicle.acquiredDate,
+          km: baseline.km ?? vehicle.acquiredOdometer),
+    };
+  }
+
   Future<List<MaintenanceRecommendation>> getRecommendations(
     Vehicle vehicle, {
     UsageEstimate? usage,
@@ -54,6 +71,8 @@ class RecommendationService {
     );
     final overrides = await _db.getIntervalOverrides(vehicle.id!);
     final lastRecords = await _db.getLastRecordsByType(vehicle.id!);
+    final baselines =
+        vehicle.used ? await _db.getBaselines(vehicle.id!) : const {};
     // Si un mantenimiento está en más de un turno, vale el más cercano (la
     // lista viene ordenada por fecha).
     final appointments = <String, Appointment>{};
@@ -73,6 +92,10 @@ class RecommendationService {
       if (intervalKm <= 0 && intervalDays <= 0) continue;
 
       final lastRecord = lastRecords[type.id];
+      final baseline = lastRecord == null ? baselines[type.id] : null;
+      final start = baselineStart(vehicle, baseline);
+      int? lastKm = lastRecord?.kmAtService;
+      DateTime? lastDate = lastRecord?.date;
       final int nextDueKm;
       final DateTime nextDueDate;
       var pendingRecord = false;
@@ -84,6 +107,21 @@ class RecommendationService {
         nextDueDate = intervalDays > 0
             ? lastRecord.date.add(Duration(days: intervalDays))
             : now.add(const Duration(days: 99999));
+      } else if (start != null) {
+        nextDueKm = intervalKm > 0
+            ? start.km + intervalKm
+            : vehicle.currentKm + 999999;
+        nextDueDate = intervalDays > 0
+            ? start.date.add(Duration(days: intervalDays))
+            : now.add(const Duration(days: 99999));
+        // Del dueño anterior se muestra sólo lo que se informó.
+        lastKm = baseline!.mode == BaselineMode.known ? baseline.km : start.km;
+        lastDate =
+            baseline.mode == BaselineMode.known ? baseline.date : start.date;
+      } else if (baseline?.mode == BaselineMode.check) {
+        // Sin dato: queda para revisar ya, sin vencido ni próximo.
+        nextDueKm = vehicle.currentKm;
+        nextDueDate = now;
       } else {
         // Nunca registrado: se cuenta desde 0 km y desde el alta del vehículo.
         // Si por ahí ya tocaba, no se puede saber si está vencido o si se hizo
@@ -103,16 +141,20 @@ class RecommendationService {
         priority: type.priority,
         intervalKm: intervalKm,
         intervalDays: intervalDays,
-        lastKm: lastRecord?.kmAtService,
-        lastDate: lastRecord?.date,
+        lastKm: lastKm,
+        lastDate: lastDate,
         nextDueKm: nextDueKm,
         nextDueDate: nextDueDate,
         currentKm: vehicle.currentKm,
         estimatedKmDate:
-            !pendingRecord && intervalKm > 0 && nextDueKm > vehicle.currentKm
+            !pendingRecord &&
+                    baseline?.mode != BaselineMode.check &&
+                    intervalKm > 0 &&
+                    nextDueKm > vehicle.currentKm
                 ? usage?.dateForKm(nextDueKm)
                 : null,
         pendingRecord: pendingRecord,
+        baseline: baseline?.mode,
         dueSoonKm: settings.dueSoonKm,
         dueSoonDays: settings.dueSoonDays,
         hasOverride: override != null &&
@@ -124,8 +166,9 @@ class RecommendationService {
     const order = {
       RecommendationStatus.overdue: 0,
       RecommendationStatus.dueSoon: 1,
-      RecommendationStatus.pendingRecord: 2,
-      RecommendationStatus.ok: 3,
+      RecommendationStatus.needsCheck: 2,
+      RecommendationStatus.pendingRecord: 3,
+      RecommendationStatus.ok: 4,
     };
     recommendations.sort((a, b) {
       final byStatus = order[a.status]!.compareTo(order[b.status]!);

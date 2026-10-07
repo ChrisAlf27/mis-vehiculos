@@ -382,6 +382,7 @@ class NotificationService {
         // Un turno reemplaza al aviso automático de ese mantenimiento.
         if (rec.appointment != null) continue;
         if (rec.status == RecommendationStatus.overdue ||
+            rec.status == RecommendationStatus.needsCheck ||
             rec.status == RecommendationStatus.pendingRecord) {
           continue;
         }

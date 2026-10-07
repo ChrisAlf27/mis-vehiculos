@@ -135,11 +135,12 @@ class _VehicleTypesScreenState extends State<VehicleTypesScreen> {
                         },
                         itemBuilder: (_) => [
                           PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Text(l10n.delete,
-                                style: const TextStyle(color: Colors.red)),
-                          ),
+                          if (!type.isBuiltIn)
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(l10n.delete,
+                                  style: const TextStyle(color: Colors.red)),
+                            ),
                         ],
                       ),
                       onTap: () async {

@@ -6,18 +6,25 @@ class VehicleType {
   final String icon;
   final int sortOrder;
 
+  /// Clave del tipo "de fábrica" (auto, moto). Esos no se pueden borrar.
+  final String? key;
+
   const VehicleType({
     this.id,
     required this.name,
     required this.icon,
     this.sortOrder = 0,
+    this.key,
   });
+
+  bool get isBuiltIn => key != null;
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'name': name,
         'icon': icon,
         'sort_order': sortOrder,
+        'key': key,
       };
 
   factory VehicleType.fromMap(Map<String, dynamic> map) => VehicleType(
@@ -25,6 +32,7 @@ class VehicleType {
         name: map['name'] as String,
         icon: map['icon'] as String,
         sortOrder: map['sort_order'] as int? ?? 0,
+        key: map['key'] as String?,
       );
 
   VehicleType copyWith({int? id, String? name, String? icon, int? sortOrder}) =>
@@ -33,5 +41,6 @@ class VehicleType {
         name: name ?? this.name,
         icon: icon ?? this.icon,
         sortOrder: sortOrder ?? this.sortOrder,
+        key: key,
       );
 }

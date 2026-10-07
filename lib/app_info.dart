@@ -2,7 +2,7 @@
 /// coincidir con `version:` de pubspec.yaml.
 class AppInfo {
   static const name = 'Mis Vehículos';
-  static const version = '1.4.1';
+  static const version = '1.5.0';
   static const author = 'Christian Alfonzo';
   static const instagramHandle = '@a__chris27';
   static const instagramUrl = 'https://instagram.com/a__chris27';

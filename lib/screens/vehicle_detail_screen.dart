@@ -3,6 +3,7 @@ import 'package:vehiculos_app/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import '../models/appointment.dart';
 import '../models/interval_override.dart';
+import '../models/maintenance_baseline.dart';
 import 'appointments/appointment_complete_screen.dart';
 import 'appointments/appointment_edit_screen.dart';
 import '../models/vehicle.dart';
@@ -15,6 +16,7 @@ import '../services/export_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import 'add_edit_maintenance_screen.dart';
+import 'previous_history_screen.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -56,6 +58,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 0);
 
   AppLocalizations get _l10n => AppLocalizations.of(context)!;
+
+  /// Mantenimientos de un usado sin registros ni punto de partida.
+  int get _withoutHistory => _vehicle.used
+      ? _recommendations
+          .where((r) => r.baseline == null && r.lastDate == null)
+          .length
+      : 0;
 
   List<MaintenanceType> get _hiddenTypes => _overrides.values
       .where((o) => o.hidden && _types.containsKey(o.maintenanceTypeId))
@@ -135,6 +144,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             itemBuilder: (_) => [
               _menuItem('update_km', Icons.speed, l10n.updateKm),
               _menuItem('schedule', Icons.event_outlined, l10n.actionSchedule),
+              if (_vehicle.used)
+                _menuItem('previous', Icons.history_outlined,
+                    l10n.previousOwnerHistory),
               _menuItem('csv', Icons.table_chart_outlined, l10n.exportCSV),
               _menuItem('pdf', Icons.picture_as_pdf_outlined, l10n.exportPDF),
             ],
@@ -266,6 +278,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 80),
       children: [
+        if (_withoutHistory > 0)
+          Card(
+            color: AppTheme.checkColor.withOpacity(0.08),
+            child: ListTile(
+              leading: const Icon(Icons.history_outlined,
+                  color: AppTheme.checkColor),
+              title: Text(l10n.onboardingBanner(_withoutHistory)),
+              subtitle: Text(l10n.onboardingBannerSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _openPreviousHistory,
+            ),
+          ),
         if (showUsageHint)
           Card(
             color: AppTheme.primaryColor.withOpacity(0.06),
@@ -356,6 +380,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               r.maintenanceTypeId,
         });
         break;
+      case 'previous':
+        await _openPreviousHistory();
+        break;
       case 'csv':
       case 'pdf':
         try {
@@ -368,6 +395,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         }
         break;
     }
+  }
+
+  Future<void> _openPreviousHistory() async {
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PreviousHistoryScreen(vehicle: _vehicle),
+      ),
+    );
+    _load();
   }
 
   Future<void> _showUpdateKmDialog() async {
@@ -855,15 +892,15 @@ class _RecommendationCard extends StatelessWidget {
                     ),
                   if (rec.pendingRecord)
                     Text(l10n.pendingRecordText, style: secondary)
+                  else if (rec.needsCheck)
+                    Text(l10n.needsCheckText, style: secondary)
                   else ...[
                     Text(
-                      rec.lastDate != null
-                          ? l10n.lastService(
-                              df.format(rec.lastDate!), '${rec.lastKm}')
-                          : l10n.firstServiceNoRecord,
+                      _lastLabel(l10n, df),
                       style: secondary.copyWith(
-                        fontStyle:
-                            rec.lastDate == null ? FontStyle.italic : null,
+                        fontStyle: rec.lastDate == null && rec.lastKm == null
+                            ? FontStyle.italic
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -947,6 +984,24 @@ class _RecommendationCard extends StatelessWidget {
         Text(text),
       ]);
 
+  String _lastLabel(AppLocalizations l10n, DateFormat df) {
+    switch (rec.baseline) {
+      case BaselineMode.assumed:
+        return l10n.baselineAssumed(
+            df.format(rec.lastDate!), '${rec.lastKm}');
+      case BaselineMode.known:
+        return l10n.baselinePrevious([
+          if (rec.lastDate != null) df.format(rec.lastDate!),
+          if (rec.lastKm != null) '${rec.lastKm} km',
+        ].join(' · '));
+      case BaselineMode.check:
+      case null:
+        return rec.lastDate != null
+            ? l10n.lastService(df.format(rec.lastDate!), '${rec.lastKm}')
+            : l10n.firstServiceNoRecord;
+    }
+  }
+
   String _kmLabel(AppLocalizations l10n) {
     final remaining = rec.kmRemaining;
     if (remaining < 0) return l10n.kmOverdue('${remaining.abs()}');
@@ -980,6 +1035,7 @@ class _StatusChip extends StatelessWidget {
     final label = switch (status) {
       RecommendationStatus.overdue => l10n.statusOverdue,
       RecommendationStatus.dueSoon => l10n.statusDueSoon,
+      RecommendationStatus.needsCheck => l10n.statusCheck,
       RecommendationStatus.pendingRecord => l10n.statusPending,
       RecommendationStatus.ok => l10n.statusOk,
     };

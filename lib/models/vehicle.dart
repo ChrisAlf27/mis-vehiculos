@@ -18,6 +18,14 @@ class Vehicle {
   final int kmReminderHour;
   final int kmReminderMinute;
 
+  /// Comprado usado: su historial anterior se completa con puntos de partida
+  /// ([MaintenanceBaseline]) en vez de contar desde 0 km.
+  final bool used;
+
+  /// Cuándo y con cuántos km se compró (sólo usados). Sin fecha vale el alta.
+  final DateTime? acquiredAt;
+  final int? acquiredKm;
+
   Vehicle({
     this.id,
     required this.name,
@@ -33,6 +41,9 @@ class Vehicle {
     this.kmReminderWeekday = DateTime.sunday,
     this.kmReminderHour = 20,
     this.kmReminderMinute = 0,
+    this.used = false,
+    this.acquiredAt,
+    this.acquiredKm,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() => {
@@ -52,6 +63,9 @@ class Vehicle {
         'km_reminder_weekday': kmReminderWeekday,
         'km_reminder_hour': kmReminderHour,
         'km_reminder_minute': kmReminderMinute,
+        'used': used ? 1 : 0,
+        'acquired_at': acquiredAt?.toIso8601String(),
+        'acquired_km': acquiredKm,
       };
 
   factory Vehicle.fromMap(Map<String, dynamic> map) => Vehicle(
@@ -70,6 +84,11 @@ class Vehicle {
             map['km_reminder_weekday'] as int? ?? DateTime.sunday,
         kmReminderHour: map['km_reminder_hour'] as int? ?? 20,
         kmReminderMinute: map['km_reminder_minute'] as int? ?? 0,
+        used: (map['used'] as int? ?? 0) == 1,
+        acquiredAt: map['acquired_at'] != null
+            ? DateTime.parse(map['acquired_at'] as String)
+            : null,
+        acquiredKm: map['acquired_km'] as int?,
       );
 
   Vehicle copyWith({
@@ -86,6 +105,9 @@ class Vehicle {
     int? kmReminderWeekday,
     int? kmReminderHour,
     int? kmReminderMinute,
+    bool? used,
+    DateTime? acquiredAt,
+    int? acquiredKm,
   }) =>
       Vehicle(
         id: id ?? this.id,
@@ -102,7 +124,14 @@ class Vehicle {
         kmReminderWeekday: kmReminderWeekday ?? this.kmReminderWeekday,
         kmReminderHour: kmReminderHour ?? this.kmReminderHour,
         kmReminderMinute: kmReminderMinute ?? this.kmReminderMinute,
+        used: used ?? this.used,
+        acquiredAt: acquiredAt ?? this.acquiredAt,
+        acquiredKm: acquiredKm ?? this.acquiredKm,
       );
+
+  /// Desde dónde se cuenta lo que se asume hecho al comprarlo.
+  DateTime get acquiredDate => acquiredAt ?? createdAt;
+  int get acquiredOdometer => acquiredKm ?? currentKm;
 
   @override
   String toString() => '$name ($brand $model $year)';

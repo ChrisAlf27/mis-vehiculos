@@ -84,10 +84,12 @@ class AppTheme {
   }
 
   static const Color pendingColor = Color(0xFF546E7A);
+  static const Color checkColor = Color(0xFF5C6BC0);
 
   static Color statusColor(RecommendationStatus status) => switch (status) {
         RecommendationStatus.overdue => dangerColor,
         RecommendationStatus.dueSoon => warningColor,
+        RecommendationStatus.needsCheck => checkColor,
         RecommendationStatus.pendingRecord => pendingColor,
         RecommendationStatus.ok => successColor,
       };

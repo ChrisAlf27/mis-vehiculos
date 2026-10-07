@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:vehiculos_app/l10n/app_localizations.dart';
 import '../models/vehicle.dart';
 import '../models/vehicle_type.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
+import 'previous_history_screen.dart';
 
 String weekdayName(AppLocalizations l10n, int weekday) => switch (weekday) {
       DateTime.monday => l10n.weekday1,
@@ -43,6 +45,9 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
   int _kmReminderWeekday = DateTime.sunday;
   TimeOfDay _kmReminderTime = const TimeOfDay(hour: 20, minute: 0);
 
+  bool _used = false;
+  DateTime? _acquiredAt;
+
   bool get _isEditing => widget.vehicle != null;
 
   @override
@@ -63,6 +68,8 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
       _kmReminderWeekday = v.kmReminderWeekday;
       _kmReminderTime =
           TimeOfDay(hour: v.kmReminderHour, minute: v.kmReminderMinute);
+      _used = v.used;
+      _acquiredAt = v.acquiredAt;
     }
   }
 
@@ -96,6 +103,21 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
     }
     setState(() => _saving = true);
 
+    final km = int.parse(_kmCtrl.text);
+    final previous = widget.vehicle;
+    // Los km de la compra: al darlo de alta, los que se cargan ahora; si se
+    // marca como usado después, la primera lectura que se tiene.
+    int? acquiredKm = previous?.acquiredKm;
+    if (_used && acquiredKm == null) {
+      if (previous == null) {
+        acquiredKm = km;
+      } else {
+        final readings = await _db.getKmReadings(previous.id!);
+        acquiredKm = readings.isEmpty ? km : readings.first.km;
+      }
+    }
+    final becameUsed = _used && previous?.used != true;
+
     final vehicle = Vehicle(
       id: widget.vehicle?.id,
       name: _nameCtrl.text.trim(),
@@ -104,12 +126,15 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
       model: _modelCtrl.text.trim(),
       year: int.parse(_yearCtrl.text),
       licensePlate: _plateCtrl.text.trim(),
-      currentKm: int.parse(_kmCtrl.text),
+      currentKm: km,
       createdAt: widget.vehicle?.createdAt,
       kmReminderEnabled: _kmReminderEnabled,
       kmReminderWeekday: _kmReminderWeekday,
       kmReminderHour: _kmReminderTime.hour,
       kmReminderMinute: _kmReminderTime.minute,
+      used: _used,
+      acquiredAt: _used ? _acquiredAt : null,
+      acquiredKm: acquiredKm,
     );
 
     final Vehicle saved;
@@ -121,7 +146,64 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
     }
     await NotificationService().scheduleKmReminder(saved);
 
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    if (becameUsed) {
+      // Recién marcado como usado: se sigue con lo que se sabe del historial.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PreviousHistoryScreen(vehicle: saved),
+        ),
+      );
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _pickAcquiredAt() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _acquiredAt ?? now,
+      firstDate: DateTime(1950),
+      lastDate: now,
+    );
+    if (picked != null) setState(() => _acquiredAt = picked);
+  }
+
+  Widget _buildUsedCard() {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.history_outlined),
+            title: Text(l10n.usedVehicleTitle),
+            subtitle: Text(l10n.usedVehicleSubtitle),
+            value: _used,
+            onChanged: (v) => setState(() => _used = v),
+          ),
+          if (_used) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.event_outlined),
+              title: Text(l10n.purchaseDate),
+              subtitle: Text(_acquiredAt == null
+                  ? l10n.purchaseDateUnset
+                  : DateFormat('dd/MM/yyyy').format(_acquiredAt!)),
+              trailing: _acquiredAt == null
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() => _acquiredAt = null),
+                    ),
+              onTap: _pickAcquiredAt,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleKmReminder(bool enabled) async {
@@ -328,6 +410,8 @@ class _AddEditVehicleScreenState extends State<AddEditVehicleScreen> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            _buildUsedCard(),
             const SizedBox(height: 16),
             _buildKmReminderCard(),
             const SizedBox(height: 24),

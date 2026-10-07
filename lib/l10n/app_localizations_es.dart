@@ -574,7 +574,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get exportBackupSub =>
-      'Un archivo con todo, para guardarlo o pasarlo a otro teléfono';
+      'Se guarda en Descargas/MisVehiculos, para tenerlo o pasarlo a otro teléfono';
 
   @override
   String get restoreBackup => 'Restaurar backup';
@@ -927,4 +927,182 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fileSuffixMaintenance => 'mantenimiento';
+
+  @override
+  String get usedVehicleTitle => 'Es usado';
+
+  @override
+  String get usedVehicleSubtitle =>
+      'Tuvo otro dueño: después te pregunto qué sabés de cada mantenimiento';
+
+  @override
+  String get purchaseDate => 'Fecha de compra';
+
+  @override
+  String get purchaseDateUnset => 'No la sé (cuenta desde que lo cargaste)';
+
+  @override
+  String get statusCheck => 'REVISAR';
+
+  @override
+  String get needsCheckText =>
+      'Historial desconocido: conviene revisarlo. Cuando lo hagas, registralo y la app calcula el próximo.';
+
+  @override
+  String baselineAssumed(String date, String km) {
+    return 'Se asume hecho al comprarlo ($date · $km km)';
+  }
+
+  @override
+  String baselinePrevious(String detail) {
+    return 'Dueño anterior (aprox.): $detail';
+  }
+
+  @override
+  String get onboardingTitle => 'Ponelo al día';
+
+  @override
+  String get onboardingIntro =>
+      '¿Qué sabés de cada mantenimiento? Si no sabés, elegí si conviene revisarlo o si asumís que está hecho. Ya te marqué una opción según la importancia.';
+
+  @override
+  String get modeKnown => 'Sé cuándo';
+
+  @override
+  String get modeCheck => 'Revisar';
+
+  @override
+  String get modeAssumed => 'Asumir hecho';
+
+  @override
+  String get knownKmLabel => 'Km aprox.';
+
+  @override
+  String get knownDateLabel => 'Fecha aprox.';
+
+  @override
+  String get knownHint => 'Completá lo que sepas, nada es obligatorio.';
+
+  @override
+  String get noDate => 'Sin fecha';
+
+  @override
+  String get onboardingLater => 'Después';
+
+  @override
+  String get onboardingScheduleTitle => '¿Agendar un turno?';
+
+  @override
+  String onboardingScheduleBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Marcaste $count mantenimientos para revisar. ¿Armamos un turno con el mecánico?',
+      one:
+          'Marcaste 1 mantenimiento para revisar. ¿Armamos un turno con el mecánico?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scheduleNow => 'Agendar';
+
+  @override
+  String get notNow => 'Ahora no';
+
+  @override
+  String onboardingBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mantenimientos sin historial',
+      one: '1 mantenimiento sin historial',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get onboardingBannerSubtitle =>
+      'Contale a la app qué sabés del dueño anterior.';
+
+  @override
+  String get previousOwnerHistory => 'Historial del dueño anterior';
+
+  @override
+  String get backupSaved => 'Backup guardado en Descargas/MisVehiculos';
+
+  @override
+  String get shareAction => 'Compartir';
+
+  @override
+  String get restorePickTitle => 'Elegí un backup';
+
+  @override
+  String get restoreNoneFound =>
+      'No hay backups en Descargas/MisVehiculos. Si lo trajiste de otro teléfono, buscalo con el botón de abajo.';
+
+  @override
+  String get restoreOtherFile => 'Buscar otro archivo';
+
+  @override
+  String get restoreChooseTitle => '¿Qué querés traer?';
+
+  @override
+  String restoreFrom(String date) {
+    return 'Backup del $date';
+  }
+
+  @override
+  String get restoreAlsoSection => 'Además';
+
+  @override
+  String get restoreHistory => 'Historial de mantenimientos y turnos';
+
+  @override
+  String get restoreHistorySub =>
+      'Si lo apagás, vienen sólo los vehículos con sus km y su configuración';
+
+  @override
+  String get restoreMechanics => 'Talleres';
+
+  @override
+  String get restoreMechanicsSub => 'Se suman los que no tengas';
+
+  @override
+  String get restoreAlreadyHave =>
+      'Ya lo tenés: se reemplaza por el del backup';
+
+  @override
+  String restoreImportSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Traer $count vehículos',
+      one: 'Traer 1 vehículo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreReplaceSome(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count vehículos que ya tenés se reemplazan por los del backup, con todo su historial. El resto de tus datos no se toca.',
+      one:
+          '1 vehículo que ya tenés se reemplaza por el del backup, con todo su historial. El resto de tus datos no se toca.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get importAction => 'Traer';
+
+  @override
+  String get importDone => 'Datos importados.';
+
+  @override
+  String get restoreReplaceAll => 'Reemplazar todos mis datos con este backup';
 }

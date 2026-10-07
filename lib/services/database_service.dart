@@ -6,19 +6,21 @@ import '../data/default_catalog.dart';
 import '../models/app_settings.dart';
 import '../models/appointment.dart';
 import '../models/interval_override.dart';
+import '../models/maintenance_baseline.dart';
 import '../models/maintenance_type.dart';
 import '../models/mechanic.dart';
 import '../models/vehicle.dart';
 import '../models/vehicle_type.dart';
 import '../models/maintenance_record.dart';
 import '../models/km_reading.dart';
+import 'backup_match.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
-  static const schemaVersion = 5;
+  static const schemaVersion = 7;
 
   /// La versión más vieja de backup que se puede importar. Una versión nueva
   /// que sólo agrega tablas no la sube: las tablas que faltan quedan vacías.
@@ -87,6 +89,115 @@ class DatabaseService {
     if (oldVersion < 3) await _migrateToV3(db);
     if (oldVersion < 4) await _migrateToV4(db);
     if (oldVersion < 5) await _migrateToV5(db);
+    if (oldVersion < 6) await _migrateToV6(db);
+    if (oldVersion < 7) await _migrateToV7(db);
+  }
+
+  Future<void> _migrateToV7(Database db) async {
+    await db.execute('ALTER TABLE vehicle_types ADD COLUMN key TEXT');
+    await upgradeCatalogToV7(db);
+  }
+
+  /// Marca los tipos de fábrica (auto, moto), los vuelve a crear si se habían
+  /// borrado y les suma los mantenimientos nuevos de la v7. También se usa al
+  /// restaurar un backup anterior a la v7.
+  static Future<void> upgradeCatalogToV7(DatabaseExecutor db) async {
+    final locale = PlatformDispatcher.instance.locale.languageCode;
+    final typeIdByKey = <String, int>{};
+    for (final t in DefaultCatalog.vehicleTypes) {
+      final ids = [
+        for (final m in DefaultCatalog.maintenanceTypes)
+          if (m.vehicleKey == t.key && m.since < 7) m.id,
+      ];
+      // El tipo de vehículo que tiene más mantenimientos de fábrica de ese
+      // tipo: los nombres se pudieron cambiar, los ids no.
+      final rows = await db.rawQuery('''
+        SELECT mt.vehicle_type_id AS id FROM maintenance_types mt
+        JOIN vehicle_types vt ON vt.id = mt.vehicle_type_id
+        WHERE vt.key IS NULL AND mt.id IN (${List.filled(ids.length, '?').join(',')})
+        GROUP BY mt.vehicle_type_id ORDER BY COUNT(*) DESC LIMIT 1
+      ''', ids);
+      if (rows.isNotEmpty) {
+        final id = rows.first['id'] as int;
+        await db.update('vehicle_types', {'key': t.key},
+            where: 'id = ?', whereArgs: [id]);
+        typeIdByKey[t.key] = id;
+      } else {
+        final maxOrder = Sqflite.firstIntValue(await db
+                .rawQuery('SELECT MAX(sort_order) FROM vehicle_types')) ??
+            0;
+        typeIdByKey[t.key] = await db.insert('vehicle_types', {
+          'name': t.getName(locale),
+          'icon': t.icon,
+          'sort_order': maxOrder + 1,
+          'key': t.key,
+        });
+      }
+    }
+
+    var order = Sqflite.firstIntValue(await db
+            .rawQuery('SELECT MAX(sort_order) FROM maintenance_types')) ??
+        0;
+    // Un tipo recreado recibe todo su catálogo; uno existente, sólo lo nuevo
+    // (lo que el usuario borró a propósito no vuelve).
+    for (final m in DefaultCatalog.maintenanceTypes) {
+      final exists = Sqflite.firstIntValue(await db.rawQuery(
+              'SELECT COUNT(*) FROM maintenance_types WHERE id = ?', [m.id])) !=
+          0;
+      if (exists) continue;
+      final typeId = typeIdByKey[m.vehicleKey]!;
+      final hasOthers = Sqflite.firstIntValue(await db.rawQuery(
+              'SELECT COUNT(*) FROM maintenance_types WHERE vehicle_type_id = ?',
+              [typeId])) !=
+          0;
+      if (m.since < 7 && hasOthers) continue;
+      await db.insert('maintenance_types', {
+        'id': m.id,
+        'vehicle_type_id': typeId,
+        'name': m.getName(locale),
+        'description': m.getDescription(locale),
+        'icon': m.icon,
+        'interval_km': m.intervalKm,
+        'interval_days': m.intervalDays,
+        'priority': m.priority,
+        'sort_order': ++order,
+      });
+    }
+
+    // El cambio de aceite ya no incluye el filtro: se corrige la descripción
+    // si nadie la tocó.
+    for (final e in DefaultCatalog.oldOilChangeDescriptions.entries) {
+      for (final (old, now) in [
+        (e.value.es, DefaultCatalog.oilChangeDescriptionEs),
+        (e.value.en, DefaultCatalog.oilChangeDescriptionEn),
+      ]) {
+        await db.update('maintenance_types', {'description': now},
+            where: 'id = ? AND description = ?', whereArgs: [e.key, old]);
+      }
+    }
+  }
+
+  /// Vehículos usados: datos de la compra y el punto de partida de cada
+  /// mantenimiento cuando no se conoce su historial.
+  Future<void> _migrateToV6(Database db) async {
+    for (final col in const [
+      'used INTEGER NOT NULL DEFAULT 0',
+      'acquired_at TEXT',
+      'acquired_km INTEGER',
+    ]) {
+      await db.execute('ALTER TABLE vehicles ADD COLUMN $col');
+    }
+    await db.execute('''
+      CREATE TABLE maintenance_baselines (
+        vehicle_id INTEGER NOT NULL,
+        maintenance_type_id TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        km INTEGER,
+        date TEXT,
+        PRIMARY KEY (vehicle_id, maintenance_type_id),
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   /// Un turno pasa a ser del vehículo y a tener varios mantenimientos. Cada
@@ -284,6 +395,172 @@ class DatabaseService {
     });
   }
 
+  /// Suma los vehículos [vehicleIds] de un backup a los datos actuales, en una
+  /// sola transacción. Un vehículo que ya estaba (misma patente o, sin
+  /// patente, mismo nombre, marca y modelo) se reemplaza. [typeKeys] son los
+  /// tipos de fábrica del backup (id → clave).
+  Future<void> importVehicles(
+    Map<String, List<Map<String, dynamic>>> tables, {
+    required Set<int> vehicleIds,
+    required Map<int, String> typeKeys,
+    required bool history,
+    required bool mechanics,
+  }) async {
+    List<Map<String, dynamic>> rows(String table, {bool Function(Map)? where}) =>
+        [
+          for (final r in tables[table] ?? const <Map<String, dynamic>>[])
+            if (where == null || where(r)) r,
+        ];
+    bool ofChosen(Map r) => vehicleIds.contains(r['vehicle_id']);
+    Map<String, dynamic> without(Map<String, dynamic> r, String key) =>
+        Map.of(r)..remove(key);
+
+    final backupTypes = {
+      for (final t in rows('vehicle_types')) t['id'] as int: t,
+    };
+    final backupMaintenance = {
+      for (final m in rows('maintenance_types')) m['id'] as String: m,
+    };
+    final vehicles = rows('vehicles', where: (v) => vehicleIds.contains(v['id']));
+    final chosenAppointments =
+        history ? rows('appointments', where: ofChosen) : const <Map>[];
+    final appointmentIds = {for (final a in chosenAppointments) a['id']};
+
+    final database = await db;
+    await database.transaction((txn) async {
+      final localTypes = await txn.query('vehicle_types');
+      final createdTypes = <int>{};
+      final typeMap = <int, int>{};
+
+      /// El tipo local que corresponde a uno del backup: el de fábrica con la
+      /// misma clave, o uno con el mismo nombre; si no hay, se crea.
+      Future<int> mapType(int backupId) async {
+        if (typeMap[backupId] case final id?) return id;
+        final key = typeKeys[backupId];
+        final source = backupTypes[backupId];
+        final name = (source?['name'] as String? ?? '').trim().toLowerCase();
+        final local = localTypes.where((t) => key != null
+                ? t['key'] == key
+                : (t['name'] as String).trim().toLowerCase() == name)
+            .firstOrNull;
+        final int id;
+        if (local != null) {
+          id = local['id'] as int;
+        } else {
+          final maxOrder = Sqflite.firstIntValue(await txn
+                  .rawQuery('SELECT MAX(sort_order) FROM vehicle_types')) ??
+              0;
+          id = await txn.insert('vehicle_types', {
+            'name': source?['name'] ?? '?',
+            'icon': source?['icon'] ?? '🚘',
+            'sort_order': maxOrder + 1,
+            'key': key,
+          });
+          createdTypes.add(id);
+        }
+        return typeMap[backupId] = id;
+      }
+
+      final localMaintenance = {
+        for (final m in await txn.query('maintenance_types', columns: ['id']))
+          m['id'] as String,
+      };
+      Future<void> ensureMaintenance(String id) async {
+        if (localMaintenance.contains(id)) return;
+        final m = backupMaintenance[id];
+        if (m == null) return;
+        await txn.insert('maintenance_types', {
+          ...m,
+          'vehicle_type_id': await mapType(m['vehicle_type_id'] as int),
+        });
+        localMaintenance.add(id);
+      }
+
+      // Los mantenimientos que usan los vehículos traídos.
+      for (final v in vehicles) {
+        await mapType(v['vehicle_type_id'] as int);
+      }
+      final used = <String>{
+        for (final r in rows('interval_overrides', where: ofChosen))
+          r['maintenance_type_id'] as String,
+        for (final r in rows('maintenance_baselines', where: ofChosen))
+          r['maintenance_type_id'] as String,
+        if (history) ...[
+          for (final r in rows('maintenance_records', where: ofChosen))
+            r['maintenance_type_id'] as String,
+          for (final r in rows('appointment_items',
+              where: (i) => appointmentIds.contains(i['appointment_id'])))
+            r['maintenance_type_id'] as String,
+        ],
+      };
+      // Un tipo de vehículo que no existía viene con todo su catálogo.
+      for (final m in backupMaintenance.values) {
+        if (used.contains(m['id']) ||
+            createdTypes.contains(typeMap[m['vehicle_type_id']])) {
+          await ensureMaintenance(m['id'] as String);
+        }
+      }
+
+      final localVehicles = List.of(await txn.query('vehicles'));
+      final vehicleMap = <int, int>{};
+      for (final v in vehicles) {
+        final match = BackupMatch.find(v, localVehicles);
+        if (match != null) {
+          await txn.delete('vehicles', where: 'id = ?', whereArgs: [match['id']]);
+          localVehicles.remove(match);
+        }
+        vehicleMap[v['id'] as int] = await txn.insert('vehicles', {
+          ...without(v, 'id'),
+          'vehicle_type_id': typeMap[v['vehicle_type_id']],
+        });
+      }
+
+      Future<void> copy(String table, {bool keepId = false}) async {
+        for (final r in rows(table, where: ofChosen)) {
+          if (!localMaintenance.contains(r['maintenance_type_id']) &&
+              r.containsKey('maintenance_type_id')) {
+            continue;
+          }
+          await txn.insert(table, {
+            ...(keepId ? r : without(r, 'id')),
+            'vehicle_id': vehicleMap[r['vehicle_id']],
+          });
+        }
+      }
+
+      await copy('km_readings');
+      await copy('interval_overrides', keepId: true);
+      await copy('maintenance_baselines', keepId: true);
+      if (history) {
+        await copy('maintenance_records');
+        for (final a in chosenAppointments) {
+          final id = await txn.insert('appointments', {
+            ...without(Map<String, dynamic>.from(a), 'id'),
+            'vehicle_id': vehicleMap[a['vehicle_id']],
+          });
+          for (final i in rows('appointment_items',
+              where: (i) => i['appointment_id'] == a['id'])) {
+            if (!localMaintenance.contains(i['maintenance_type_id'])) continue;
+            await txn.insert('appointment_items', {...i, 'appointment_id': id});
+          }
+        }
+        await _deleteEmptyAppointments(txn);
+      }
+
+      if (mechanics) {
+        final names = {
+          for (final m in await txn.query('mechanics', columns: ['name']))
+            (m['name'] as String).trim().toLowerCase(),
+        };
+        for (final m in rows('mechanics')) {
+          final name = (m['name'] as String? ?? '').trim();
+          if (name.isEmpty || !names.add(name.toLowerCase())) continue;
+          await txn.insert('mechanics', without(m, 'id'));
+        }
+      }
+    });
+  }
+
   Future<Map<String, List<Map<String, dynamic>>>> dumpAllData() async {
     final database = await db;
     return {
@@ -298,6 +575,7 @@ class DatabaseService {
     'appointment_items',
     'appointments',
     'interval_overrides',
+    'maintenance_baselines',
     'km_readings',
     'maintenance_records',
     'vehicles',
@@ -359,10 +637,11 @@ class DatabaseService {
   }
 
   /// Borra el tipo y sus mantenimientos. El llamador verifica antes que no
-  /// haya vehículos de ese tipo.
+  /// haya vehículos de ese tipo. Los de fábrica (auto, moto) no se borran.
   Future<void> deleteVehicleType(int id) async {
     final database = await db;
-    await database.delete('vehicle_types', where: 'id = ?', whereArgs: [id]);
+    await database.delete('vehicle_types',
+        where: 'id = ? AND key IS NULL', whereArgs: [id]);
   }
 
   // ─── MAINTENANCE TYPES ────────────────────────────────────────────────────
@@ -409,6 +688,8 @@ class DatabaseService {
         where: 'maintenance_type_id = ?', whereArgs: [id]);
     await _deleteEmptyAppointments(database);
     await database.delete('interval_overrides',
+        where: 'maintenance_type_id = ?', whereArgs: [id]);
+    await database.delete('maintenance_baselines',
         where: 'maintenance_type_id = ?', whereArgs: [id]);
     await database
         .delete('maintenance_types', where: 'id = ?', whereArgs: [id]);
@@ -561,6 +842,28 @@ class DatabaseService {
       await database.insert('interval_overrides', override.toMap(),
           conflictAlgorithm: ConflictAlgorithm.replace);
     }
+  }
+
+  // ─── MAINTENANCE BASELINES ────────────────────────────────────────────────
+
+  Future<Map<String, MaintenanceBaseline>> getBaselines(int vehicleId) async {
+    final database = await db;
+    final maps = await database.query('maintenance_baselines',
+        where: 'vehicle_id = ?', whereArgs: [vehicleId]);
+    return {
+      for (final b in maps.map(MaintenanceBaseline.fromMap))
+        b.maintenanceTypeId: b,
+    };
+  }
+
+  Future<void> saveBaselines(List<MaintenanceBaseline> baselines) async {
+    final database = await db;
+    final batch = database.batch();
+    for (final b in baselines) {
+      batch.insert('maintenance_baselines', b.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    await batch.commit(noResult: true);
   }
 
   // ─── VEHICLES ─────────────────────────────────────────────────────────────

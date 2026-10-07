@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiculos_app/l10n/app_localizations.dart';
 import '../app_info.dart';
@@ -14,6 +15,7 @@ import '../widgets/update_dialog.dart';
 import '../theme/app_theme.dart';
 import 'catalogs/mechanics_screen.dart';
 import 'catalogs/vehicle_types_screen.dart';
+import 'restore_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -102,14 +104,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportBackup() async {
+    final l10n = _l10n;
     setState(() => _busy = true);
     try {
-      await _backup.exportAndShare(subject: _l10n.backupShareSubject);
+      final file = await _backup.export();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.backupSaved),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: l10n.shareAction,
+          onPressed: () =>
+              _backup.share(file, subject: l10n.backupShareSubject),
+        ),
+      ));
     } catch (_) {
-      if (mounted) _snack(_l10n.backupError);
+      if (mounted) _snack(l10n.backupError);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Los backups de la carpeta para elegir uno, o buscar otro archivo.
+  /// Devuelve el backup ya leído, o null si se canceló.
+  Future<Map<String, dynamic>?> _chooseBackup() async {
+    final l10n = _l10n;
+    List<BackupFile> files;
+    try {
+      files = await _backup.list();
+    } catch (_) {
+      files = [];
+    }
+    if (!mounted) return null;
+    final df = DateFormat('dd/MM/yyyy HH:mm');
+
+    // null: cancelado; un BackupFile: ese; 'other': buscar otro archivo.
+    final choice = await showModalBottomSheet<Object>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(l10n.restorePickTitle,
+                    style: Theme.of(ctx).textTheme.titleMedium),
+              ),
+              if (files.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(l10n.restoreNoneFound,
+                      style: TextStyle(color: Colors.grey.shade600)),
+                )
+              else
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final f in files)
+                        ListTile(
+                          leading: const Icon(Icons.description_outlined),
+                          title: Text(df.format(f.modified)),
+                          subtitle: Text(f.name,
+                              style: const TextStyle(fontSize: 12)),
+                          onTap: () => Navigator.pop(ctx, f),
+                        ),
+                    ],
+                  ),
+                ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.folder_open_outlined),
+                title: Text(l10n.restoreOtherFile),
+                onTap: () => Navigator.pop(ctx, 'other'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice is BackupFile) return _backup.read(choice);
+    if (choice == 'other') return _backup.pickOther();
+    return null;
   }
 
   String _backupErrorText(BackupError e) => switch (e) {
@@ -121,45 +202,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _importBackup() async {
     Map<String, dynamic>? backup;
     try {
-      backup = await _backup.pickBackup();
+      backup = await _chooseBackup();
     } on BackupException catch (e) {
       if (mounted) _snack(_backupErrorText(e.error));
       return;
+    } catch (_) {
+      if (mounted) _snack(_l10n.backupInvalidFile);
+      return;
     }
     if (backup == null || !mounted) return;
-
-    final l10n = _l10n;
-    final vehicles = BackupService.countVehicles(backup);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.restoreConfirmTitle),
-        content: Text(
-            '${l10n.restoreConfirmVehicles(vehicles)} ${l10n.restoreConfirmWarning}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppTheme.dangerColor),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.replaceAll),
-          ),
-        ],
-      ),
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => RestoreScreen(backup: backup!)),
     );
-    if (confirmed != true) return;
-
-    setState(() => _busy = true);
-    try {
-      await _backup.restore(backup);
-      if (mounted) _snack(l10n.restoreDone);
-    } catch (_) {
-      if (mounted) _snack(l10n.restoreFailed);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    _load();
   }
 
   Future<void> _checkUpdate() async {
