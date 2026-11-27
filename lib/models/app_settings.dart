@@ -13,6 +13,9 @@ class AppSettings {
   /// 'es' | 'en'. Null = el idioma del teléfono.
   final String? locale;
 
+  /// 'light' | 'dark' | 'system' (según el teléfono).
+  final String themeMode;
+
   const AppSettings({
     this.dueSoonKm = 500,
     this.dueSoonDays = 14,
@@ -20,6 +23,7 @@ class AppSettings {
     this.reminderDaysBefore = 7,
     this.reminderHour = 9,
     this.locale,
+    this.themeMode = 'system',
   });
 
   Map<String, String> toKeyValues() => {
@@ -30,6 +34,7 @@ class AppSettings {
         'reminder_days_before': '$reminderDaysBefore',
         'reminder_hour': '$reminderHour',
         'locale': locale ?? '',
+        'theme_mode': themeMode,
       };
 
   factory AppSettings.fromKeyValues(Map<String, String> kv) {
@@ -44,6 +49,11 @@ class AppSettings {
       reminderDaysBefore: intOf('reminder_days_before', d.reminderDaysBefore),
       reminderHour: intOf('reminder_hour', d.reminderHour),
       locale: locale == null || locale.isEmpty ? null : locale,
+      themeMode: switch (kv['theme_mode']) {
+        'light' => 'light',
+        'dark' => 'dark',
+        _ => 'system',
+      },
     );
   }
 
@@ -55,6 +65,7 @@ class AppSettings {
     int? reminderHour,
     String? locale,
     bool clearLocale = false,
+    String? themeMode,
   }) =>
       AppSettings(
         dueSoonKm: dueSoonKm ?? this.dueSoonKm,
@@ -64,5 +75,6 @@ class AppSettings {
         reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
         reminderHour: reminderHour ?? this.reminderHour,
         locale: clearLocale ? null : (locale ?? this.locale),
+        themeMode: themeMode ?? this.themeMode,
       );
 }

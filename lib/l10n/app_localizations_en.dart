@@ -1101,4 +1101,146 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreReplaceAll => 'Replace all my data with this backup';
+
+  @override
+  String get manualIntervals => 'Manual intervals';
+
+  @override
+  String get manualIntervalsHelp =>
+      'Pick the factory manual and its intervals are loaded for this vehicle. You can still adjust any of them.';
+
+  @override
+  String get manualMatchesVehicle => 'Matches your vehicle';
+
+  @override
+  String get manualRemove => 'Remove manual ones';
+
+  @override
+  String get manualRemoved => 'Back to the general intervals.';
+
+  @override
+  String get manualPreviewFooter =>
+      'Whatever the manual doesn\'t specify (e.g. time) keeps the general value. If you edit one by hand, it becomes custom.';
+
+  @override
+  String get manualApply => 'Apply';
+
+  @override
+  String get fromManual => 'Interval from the manual';
+
+  @override
+  String manualDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String manualApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count intervals loaded from the manual.',
+      one: '1 interval loaded from the manual.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get maintenanceTable => 'Maintenance schedule';
+
+  @override
+  String get chooseManual => 'Choose the manual';
+
+  @override
+  String serviceChip(String number, String km) {
+    return '#$number · $km km';
+  }
+
+  @override
+  String get nextService => 'Next';
+
+  @override
+  String kmToGo(String km) {
+    return '$km km to go';
+  }
+
+  @override
+  String kmPast(String km) {
+    return '$km km past';
+  }
+
+  @override
+  String get toBuy => 'To buy';
+
+  @override
+  String get nothingToBuy => 'No parts needed for this service.';
+
+  @override
+  String get betweenServices => 'Between services';
+
+  @override
+  String get byTime => 'By time';
+
+  @override
+  String get fullTable => 'Full table';
+
+  @override
+  String get partsAndSpecs => 'Parts and specs';
+
+  @override
+  String get tableItem => 'Item';
+
+  @override
+  String everyYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'every $count years',
+      one: 'every year',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get themeSystem => 'System default';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get pendingTitle => 'Pending from previous services';
+
+  @override
+  String get pendingHint =>
+      'Not recorded in the app. If you already did it, record it and it goes away.';
+
+  @override
+  String pendingSince(String service) {
+    return 'was due at $service';
+  }
+
+  @override
+  String pendingChecks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count checks and adjustments',
+      one: '1 check or adjustment',
+    );
+    return '$_temp0 from the general service';
+  }
+
+  @override
+  String get pendingTag => 'pending';
 }

@@ -36,7 +36,10 @@ void main() async {
   }
   final settings = await db.getSettings();
 
-  runApp(VehiculosApp(initialLocale: settings.locale));
+  runApp(VehiculosApp(
+    initialLocale: settings.locale,
+    initialThemeMode: settings.themeMode,
+  ));
 
   final target = launchTarget;
   if (target != null) {
@@ -78,8 +81,13 @@ Future<void> _openVehicle(int vehicleId, bool askKm) async {
 
 class VehiculosApp extends StatefulWidget {
   final String? initialLocale;
+  final String initialThemeMode;
 
-  const VehiculosApp({super.key, this.initialLocale});
+  const VehiculosApp({
+    super.key,
+    this.initialLocale,
+    this.initialThemeMode = 'system',
+  });
 
   static _VehiculosAppState? of(BuildContext context) =>
       context.findAncestorStateOfType<_VehiculosAppState>();
@@ -90,6 +98,17 @@ class VehiculosApp extends StatefulWidget {
 
 class _VehiculosAppState extends State<VehiculosApp> {
   late Locale _locale;
+  late ThemeMode _themeMode = themeModeOf(widget.initialThemeMode);
+
+  static ThemeMode themeModeOf(String value) => switch (value) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+
+  /// Sólo cambia el tema en pantalla; lo guarda quien lo llama.
+  void setThemeMode(String value) =>
+      setState(() => _themeMode = themeModeOf(value));
 
   @override
   void initState() {
@@ -116,6 +135,8 @@ class _VehiculosAppState extends State<VehiculosApp> {
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: _themeMode,
       locale: _locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,

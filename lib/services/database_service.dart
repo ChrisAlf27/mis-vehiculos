@@ -20,7 +20,7 @@ class DatabaseService {
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
-  static const schemaVersion = 7;
+  static const schemaVersion = 8;
 
   /// La versión más vieja de backup que se puede importar. Una versión nueva
   /// que sólo agrega tablas no la sube: las tablas que faltan quedan vacías.
@@ -91,6 +91,13 @@ class DatabaseService {
     if (oldVersion < 5) await _migrateToV5(db);
     if (oldVersion < 6) await _migrateToV6(db);
     if (oldVersion < 7) await _migrateToV7(db);
+    if (oldVersion < 8) await _migrateToV8(db);
+  }
+
+  /// Intervalos por vehículo tomados de un manual de fábrica.
+  Future<void> _migrateToV8(Database db) async {
+    await db
+        .execute('ALTER TABLE interval_overrides ADD COLUMN manual_id TEXT');
   }
 
   Future<void> _migrateToV7(Database db) async {
@@ -406,7 +413,8 @@ class DatabaseService {
     required bool history,
     required bool mechanics,
   }) async {
-    List<Map<String, dynamic>> rows(String table, {bool Function(Map)? where}) =>
+    List<Map<String, dynamic>> rows(String table,
+            {bool Function(Map)? where}) =>
         [
           for (final r in tables[table] ?? const <Map<String, dynamic>>[])
             if (where == null || where(r)) r,
@@ -421,7 +429,8 @@ class DatabaseService {
     final backupMaintenance = {
       for (final m in rows('maintenance_types')) m['id'] as String: m,
     };
-    final vehicles = rows('vehicles', where: (v) => vehicleIds.contains(v['id']));
+    final vehicles =
+        rows('vehicles', where: (v) => vehicleIds.contains(v['id']));
     final chosenAppointments =
         history ? rows('appointments', where: ofChosen) : const <Map>[];
     final appointmentIds = {for (final a in chosenAppointments) a['id']};
@@ -439,7 +448,8 @@ class DatabaseService {
         final key = typeKeys[backupId];
         final source = backupTypes[backupId];
         final name = (source?['name'] as String? ?? '').trim().toLowerCase();
-        final local = localTypes.where((t) => key != null
+        final local = localTypes
+            .where((t) => key != null
                 ? t['key'] == key
                 : (t['name'] as String).trim().toLowerCase() == name)
             .firstOrNull;
@@ -506,7 +516,8 @@ class DatabaseService {
       for (final v in vehicles) {
         final match = BackupMatch.find(v, localVehicles);
         if (match != null) {
-          await txn.delete('vehicles', where: 'id = ?', whereArgs: [match['id']]);
+          await txn
+              .delete('vehicles', where: 'id = ?', whereArgs: [match['id']]);
           localVehicles.remove(match);
         }
         vehicleMap[v['id'] as int] = await txn.insert('vehicles', {

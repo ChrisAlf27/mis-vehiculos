@@ -8,15 +8,24 @@ class IntervalOverride {
   final int? intervalDays;
   final bool hidden;
 
+  /// Los km/días salieron del manual de fábrica con ese id
+  /// (ManualSchedules). Null: los cargó el usuario.
+  final String? manualId;
+
   const IntervalOverride({
     required this.vehicleId,
     required this.maintenanceTypeId,
     this.intervalKm,
     this.intervalDays,
     this.hidden = false,
+    this.manualId,
   });
 
   bool get isEmpty => intervalKm == null && intervalDays == null && !hidden;
+
+  bool get hasInterval => intervalKm != null || intervalDays != null;
+
+  bool get fromManual => manualId != null && hasInterval;
 
   Map<String, dynamic> toMap() => {
         'vehicle_id': vehicleId,
@@ -24,6 +33,7 @@ class IntervalOverride {
         'interval_km': intervalKm,
         'interval_days': intervalDays,
         'hidden': hidden ? 1 : 0,
+        'manual_id': manualId,
       };
 
   factory IntervalOverride.fromMap(Map<String, dynamic> map) =>
@@ -33,5 +43,6 @@ class IntervalOverride {
         intervalKm: map['interval_km'] as int?,
         intervalDays: map['interval_days'] as int?,
         hidden: (map['hidden'] as int? ?? 0) == 1,
+        manualId: map['manual_id'] as String?,
       );
 }

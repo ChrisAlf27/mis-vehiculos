@@ -10,6 +10,9 @@ class AppTheme {
   static const Color dangerColor = Color(0xFFC62828);
   static const Color surfaceColor = Color(0xFFF5F5F5);
 
+  /// Barra de arriba en modo oscuro: el mismo azul, apagado.
+  static const Color darkBarColor = Color(0xFF0F2F57);
+
   static ThemeData get lightTheme => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -69,6 +72,29 @@ class AppTheme {
           type: BottomNavigationBarType.fixed,
         ),
       );
+
+  static ThemeData get darkTheme {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: primaryColor,
+      brightness: Brightness.dark,
+    ).copyWith(secondary: accentColor);
+    final light = lightTheme;
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      appBarTheme: light.appBarTheme.copyWith(backgroundColor: darkBarColor),
+      cardTheme: light.cardTheme,
+      floatingActionButtonTheme: light.floatingActionButtonTheme,
+      inputDecorationTheme: light.inputDecorationTheme.copyWith(
+        fillColor: scheme.surfaceContainerHigh,
+      ),
+      elevatedButtonTheme: light.elevatedButtonTheme,
+      chipTheme: light.chipTheme,
+      bottomNavigationBarTheme: light.bottomNavigationBarTheme.copyWith(
+        selectedItemColor: scheme.primary,
+      ),
+    );
+  }
 
   static Color priorityColor(String priority) {
     switch (priority) {

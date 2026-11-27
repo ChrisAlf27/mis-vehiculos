@@ -488,7 +488,7 @@ class _TypeButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
-              : Colors.grey.shade100,
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
@@ -507,7 +507,7 @@ class _TypeButton extends StatelessWidget {
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 color: selected
                     ? Theme.of(context).colorScheme.primary
-                    : Colors.grey.shade700,
+                    : Colors.grey.shade600,
               ),
               textAlign: TextAlign.center,
             ),

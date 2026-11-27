@@ -26,7 +26,7 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo info) async {
             if (info.notes != null && info.notes!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(info.notes!,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
             ],
           ],
         ),

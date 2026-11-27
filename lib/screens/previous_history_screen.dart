@@ -110,8 +110,7 @@ class _PreviousHistoryScreenState extends State<PreviousHistoryScreen> {
       if (mode == BaselineMode.known) {
         final text = a.km.text.trim();
         km = text.isEmpty ? null : parseKm(text);
-        if (text.isNotEmpty &&
-            (km == null || km > widget.vehicle.currentKm)) {
+        if (text.isNotEmpty && (km == null || km > widget.vehicle.currentKm)) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('${t.icon} ${t.name}: ${l10n.kmInvalid}'),
           ));
@@ -186,7 +185,7 @@ class _PreviousHistoryScreenState extends State<PreviousHistoryScreen> {
               children: [
                 Text(
                   l10n.onboardingIntro,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 12),
                 for (final t in _types) _buildItem(t, _answers[t.id]!),
@@ -195,8 +194,9 @@ class _PreviousHistoryScreenState extends State<PreviousHistoryScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed:
-                            _saving ? null : () => Navigator.pop(context, false),
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.pop(context, false),
                         child: Text(l10n.onboardingLater),
                       ),
                     ),
@@ -249,12 +249,10 @@ class _PreviousHistoryScreenState extends State<PreviousHistoryScreen> {
                 ButtonSegment(
                     value: BaselineMode.check, label: Text(l10n.modeCheck)),
                 ButtonSegment(
-                    value: BaselineMode.assumed,
-                    label: Text(l10n.modeAssumed)),
+                    value: BaselineMode.assumed, label: Text(l10n.modeAssumed)),
               ],
               selected: {answer.mode},
-              onSelectionChanged: (s) =>
-                  setState(() => answer.mode = s.first),
+              onSelectionChanged: (s) => setState(() => answer.mode = s.first),
             ),
             if (answer.mode == BaselineMode.known) ...[
               const SizedBox(height: 12),
@@ -311,8 +309,8 @@ class _PreviousHistoryScreenState extends State<PreviousHistoryScreen> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   l10n.needsCheckText,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppTheme.checkColor),
+                  style:
+                      const TextStyle(fontSize: 11, color: AppTheme.checkColor),
                 ),
               ),
           ],

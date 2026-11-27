@@ -1885,6 +1885,204 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Reemplazar todos mis datos con este backup'**
   String get restoreReplaceAll;
+
+  /// No description provided for @manualIntervals.
+  ///
+  /// In es, this message translates to:
+  /// **'Intervalos del manual'**
+  String get manualIntervals;
+
+  /// No description provided for @manualIntervalsHelp.
+  ///
+  /// In es, this message translates to:
+  /// **'Elegí el manual de fábrica y se cargan sus intervalos en este vehículo. Después podés ajustar cualquiera.'**
+  String get manualIntervalsHelp;
+
+  /// No description provided for @manualMatchesVehicle.
+  ///
+  /// In es, this message translates to:
+  /// **'Coincide con tu vehículo'**
+  String get manualMatchesVehicle;
+
+  /// No description provided for @manualRemove.
+  ///
+  /// In es, this message translates to:
+  /// **'Quitar los del manual'**
+  String get manualRemove;
+
+  /// No description provided for @manualRemoved.
+  ///
+  /// In es, this message translates to:
+  /// **'Se volvió a los intervalos generales.'**
+  String get manualRemoved;
+
+  /// No description provided for @manualPreviewFooter.
+  ///
+  /// In es, this message translates to:
+  /// **'Lo que el manual no indica (por ej. el tiempo) sigue con el valor general. Si editás uno a mano, pasa a ser propio.'**
+  String get manualPreviewFooter;
+
+  /// No description provided for @manualApply.
+  ///
+  /// In es, this message translates to:
+  /// **'Aplicar'**
+  String get manualApply;
+
+  /// No description provided for @fromManual.
+  ///
+  /// In es, this message translates to:
+  /// **'Intervalo de manual'**
+  String get fromManual;
+
+  /// No description provided for @manualDays.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 día} other{{count} días}}'**
+  String manualDays(int count);
+
+  /// No description provided for @manualApplied.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 intervalo cargado del manual.} other{{count} intervalos cargados del manual.}}'**
+  String manualApplied(int count);
+
+  /// No description provided for @maintenanceTable.
+  ///
+  /// In es, this message translates to:
+  /// **'Tabla de mantenimiento'**
+  String get maintenanceTable;
+
+  /// No description provided for @chooseManual.
+  ///
+  /// In es, this message translates to:
+  /// **'Elegí el manual'**
+  String get chooseManual;
+
+  /// No description provided for @serviceChip.
+  ///
+  /// In es, this message translates to:
+  /// **'{number}° · {km} km'**
+  String serviceChip(String number, String km);
+
+  /// No description provided for @nextService.
+  ///
+  /// In es, this message translates to:
+  /// **'Próximo'**
+  String get nextService;
+
+  /// No description provided for @kmToGo.
+  ///
+  /// In es, this message translates to:
+  /// **'Faltan {km} km'**
+  String kmToGo(String km);
+
+  /// No description provided for @kmPast.
+  ///
+  /// In es, this message translates to:
+  /// **'Ya pasaste por {km} km'**
+  String kmPast(String km);
+
+  /// No description provided for @toBuy.
+  ///
+  /// In es, this message translates to:
+  /// **'Para comprar'**
+  String get toBuy;
+
+  /// No description provided for @nothingToBuy.
+  ///
+  /// In es, this message translates to:
+  /// **'Para este service no hace falta comprar repuestos.'**
+  String get nothingToBuy;
+
+  /// No description provided for @betweenServices.
+  ///
+  /// In es, this message translates to:
+  /// **'Entre services'**
+  String get betweenServices;
+
+  /// No description provided for @byTime.
+  ///
+  /// In es, this message translates to:
+  /// **'Por tiempo'**
+  String get byTime;
+
+  /// No description provided for @fullTable.
+  ///
+  /// In es, this message translates to:
+  /// **'Tabla completa'**
+  String get fullTable;
+
+  /// No description provided for @partsAndSpecs.
+  ///
+  /// In es, this message translates to:
+  /// **'Repuestos y especificaciones'**
+  String get partsAndSpecs;
+
+  /// No description provided for @tableItem.
+  ///
+  /// In es, this message translates to:
+  /// **'Ítem'**
+  String get tableItem;
+
+  /// No description provided for @everyYears.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{cada año} other{cada {count} años}}'**
+  String everyYears(int count);
+
+  /// No description provided for @theme.
+  ///
+  /// In es, this message translates to:
+  /// **'Tema'**
+  String get theme;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In es, this message translates to:
+  /// **'Según el teléfono'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In es, this message translates to:
+  /// **'Claro'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In es, this message translates to:
+  /// **'Oscuro'**
+  String get themeDark;
+
+  /// No description provided for @pendingTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Pendiente de services anteriores'**
+  String get pendingTitle;
+
+  /// No description provided for @pendingHint.
+  ///
+  /// In es, this message translates to:
+  /// **'No figura registrado en la app. Si ya lo hiciste, registralo y deja de aparecer.'**
+  String get pendingHint;
+
+  /// No description provided for @pendingSince.
+  ///
+  /// In es, this message translates to:
+  /// **'tocaba en el {service}'**
+  String pendingSince(String service);
+
+  /// No description provided for @pendingChecks.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 revisión o ajuste} other{{count} revisiones y ajustes}} del service general'**
+  String pendingChecks(int count);
+
+  /// No description provided for @pendingTag.
+  ///
+  /// In es, this message translates to:
+  /// **'pendiente'**
+  String get pendingTag;
 }
 
 class _AppLocalizationsDelegate

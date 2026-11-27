@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vehiculos_app/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import '../data/manual_schedules.dart';
 import '../models/appointment.dart';
 import '../models/interval_override.dart';
 import '../models/maintenance_baseline.dart';
@@ -16,6 +17,7 @@ import '../services/export_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import 'add_edit_maintenance_screen.dart';
+import 'manual_table_screen.dart';
 import 'previous_history_screen.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
@@ -65,6 +67,25 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           .where((r) => r.baseline == null && r.lastDate == null)
           .length
       : 0;
+
+  /// Los intervalos del manual que aplican a los mantenimientos (activos) del
+  /// tipo de este vehículo.
+  Map<String, ManualInterval> _applicable(ManualSchedule s) => {
+        for (final e in s.intervals.entries)
+          if (_types[e.key] case final t?
+              when t.active && t.vehicleTypeId == _vehicle.vehicleTypeId)
+            e.key: e.value,
+      };
+
+  /// Los manuales que sirven para este vehículo; primero los que coinciden
+  /// con la marca y el modelo.
+  List<ManualSchedule> get _manualSchedules {
+    final list =
+        ManualSchedules.all.where((s) => _applicable(s).isNotEmpty).toList();
+    bool m(ManualSchedule s) => s.matches(_vehicle.brand, _vehicle.model);
+    list.sort((a, b) => (m(a) ? 0 : 1).compareTo(m(b) ? 0 : 1));
+    return list;
+  }
 
   List<MaintenanceType> get _hiddenTypes => _overrides.values
       .where((o) => o.hidden && _types.containsKey(o.maintenanceTypeId))
@@ -147,6 +168,12 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               if (_vehicle.used)
                 _menuItem('previous', Icons.history_outlined,
                     l10n.previousOwnerHistory),
+              if (_manualSchedules.isNotEmpty) ...[
+                _menuItem('manual_table', Icons.fact_check_outlined,
+                    l10n.maintenanceTable),
+                _menuItem(
+                    'manual', Icons.menu_book_outlined, l10n.manualIntervals),
+              ],
               _menuItem('csv', Icons.table_chart_outlined, l10n.exportCSV),
               _menuItem('pdf', Icons.picture_as_pdf_outlined, l10n.exportPDF),
             ],
@@ -190,7 +217,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       PopupMenuItem(
         value: value,
         child: Row(children: [
-          Icon(icon),
+          // Explícito: si no, hereda el blanco de la barra de arriba.
+          Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Text(text),
         ]),
@@ -214,7 +242,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
   }
 
   Widget _buildVehicleHeader() => Container(
-        color: AppTheme.primaryColor,
+        color: Theme.of(context).appBarTheme.backgroundColor,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: Row(
           children: [
@@ -383,6 +411,12 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       case 'previous':
         await _openPreviousHistory();
         break;
+      case 'manual':
+        await _showManualDialog();
+        break;
+      case 'manual_table':
+        await _openManualTable();
+        break;
       case 'csv':
       case 'pdf':
         try {
@@ -521,7 +555,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             children: [
               Text(
                 l10n.overrideHelp(_vehicle.name),
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -579,17 +613,280 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         intervalKm: current?.intervalKm,
         intervalDays: current?.intervalDays,
         hidden: true,
+        manualId: current?.manualId,
       ));
     } else if (action == 'save') {
+      final km = int.tryParse(kmCtrl.text.trim());
+      final days = int.tryParse(daysCtrl.text.trim());
+      // Si se cambian los valores del manual, pasan a ser propios.
+      final unchanged =
+          km == current?.intervalKm && days == current?.intervalDays;
       await _db.saveIntervalOverride(IntervalOverride(
         vehicleId: _vehicle.id!,
         maintenanceTypeId: typeId,
-        intervalKm: int.tryParse(kmCtrl.text.trim()),
-        intervalDays: int.tryParse(daysCtrl.text.trim()),
+        intervalKm: km,
+        intervalDays: days,
+        manualId: unchanged ? current?.manualId : null,
       ));
     } else {
       return;
     }
+    _load();
+  }
+
+  /// La tabla del manual del vehículo: el que tiene cargado, el que coincide
+  /// con marca y modelo, o el que se elija.
+  Future<void> _openManualTable() async {
+    final schedules = _manualSchedules;
+    final appliedId =
+        _overrides.values.where((o) => o.fromManual).firstOrNull?.manualId;
+    final matching = schedules
+        .where((s) => s.matches(_vehicle.brand, _vehicle.model))
+        .toList();
+
+    var schedule = ManualSchedules.byId(appliedId) ??
+        (matching.length == 1 ? matching.first : null) ??
+        (schedules.length == 1 ? schedules.first : null);
+    if (schedule == null) {
+      final id = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: Text(_l10n.chooseManual),
+          children: [
+            for (final s in schedules)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, s.id),
+                child: Text(s.name),
+              ),
+          ],
+        ),
+      );
+      schedule = ManualSchedules.byId(id);
+    }
+    final chosen = schedule;
+    if (chosen == null || !mounted) return;
+    final lastKm = <String, int>{};
+    for (final r in _records) {
+      final km = lastKm[r.maintenanceTypeId];
+      if (km == null || r.kmAtService > km) {
+        lastKm[r.maintenanceTypeId] = r.kmAtService;
+      }
+    }
+    final readings = await DatabaseService().getKmReadings(_vehicle.id!);
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ManualTableScreen(
+          schedule: chosen,
+          currentKm: _vehicle.currentKm,
+          lastKmByType: lastKm,
+          knownSinceKm: readings.isEmpty
+              ? null
+              : readings.map((r) => r.km).reduce((a, b) => a < b ? a : b),
+        ),
+      ),
+    );
+  }
+
+  /// Elegir un manual de fábrica y cargar sus intervalos en este vehículo.
+  Future<void> _showManualDialog() async {
+    final l10n = _l10n;
+    final schedules = _manualSchedules;
+    final applied = _overrides.values.where((o) => o.fromManual).toList();
+    final appliedId = applied.map((o) => o.manualId).firstOrNull;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.manualIntervals),
+        contentPadding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  l10n.manualIntervalsHelp,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final s in schedules)
+                ListTile(
+                  leading: Icon(
+                    s.id == appliedId
+                        ? Icons.check_circle
+                        : Icons.menu_book_outlined,
+                    color: s.id == appliedId ? AppTheme.primaryColor : null,
+                  ),
+                  title: Text(s.name),
+                  subtitle: s.matches(_vehicle.brand, _vehicle.model)
+                      ? Text(l10n.manualMatchesVehicle,
+                          style: const TextStyle(color: AppTheme.primaryColor))
+                      : null,
+                  onTap: () => Navigator.pop(ctx, s.id),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          if (applied.isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: Text(l10n.manualRemove),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+    if (choice == null) return;
+
+    if (choice.isEmpty) {
+      for (final o in applied) {
+        await _db.saveIntervalOverride(IntervalOverride(
+          vehicleId: o.vehicleId,
+          maintenanceTypeId: o.maintenanceTypeId,
+          hidden: o.hidden,
+        ));
+      }
+      if (mounted) _snack(l10n.manualRemoved);
+      _load();
+      return;
+    }
+
+    final schedule = ManualSchedules.byId(choice);
+    if (schedule == null || !mounted) return;
+    await _showManualPreview(schedule);
+  }
+
+  /// Qué cambia en cada mantenimiento antes de aplicar el manual.
+  Future<void> _showManualPreview(ManualSchedule schedule) async {
+    final l10n = _l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final intervals = _applicable(schedule);
+    final note = schedule.getNote(locale);
+
+    final numbers = NumberFormat.decimalPattern(locale);
+    String fmt(int? km, int? days) {
+      final parts = [
+        if (km != null && km > 0) '${numbers.format(km)} km',
+        if (days != null && days > 0) l10n.manualDays(days),
+      ];
+      return parts.isEmpty ? '—' : parts.join(' · ');
+    }
+
+    final rows = [
+      for (final e in intervals.entries)
+        (
+          type: _types[e.key]!,
+          before: fmt(
+            _overrides[e.key]?.intervalKm ?? _types[e.key]!.intervalKm,
+            _overrides[e.key]?.intervalDays ?? _types[e.key]!.intervalDays,
+          ),
+          after: fmt(
+            e.value.km ?? _types[e.key]!.intervalKm,
+            e.value.days ?? _types[e.key]!.intervalDays,
+          ),
+        ),
+    ]..sort((a, b) => a.type.sortOrder.compareTo(b.type.sortOrder));
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(schedule.name),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Text(schedule.source,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              if (note.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(note, style: const TextStyle(fontSize: 13)),
+              ],
+              const SizedBox(height: 12),
+              for (final r in rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(r.type.icon, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(r.type.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500)),
+                            Text(
+                              r.before == r.after
+                                  ? r.after
+                                  : '${r.before}  →  ${r.after}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: r.before == r.after
+                                    ? Colors.grey.shade600
+                                    : AppTheme.primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.manualPreviewFooter,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.manualApply),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    // Lo que había de otro manual y este no trae vuelve al valor del tipo.
+    for (final o in _overrides.values) {
+      if (o.fromManual && !intervals.containsKey(o.maintenanceTypeId)) {
+        await _db.saveIntervalOverride(IntervalOverride(
+          vehicleId: o.vehicleId,
+          maintenanceTypeId: o.maintenanceTypeId,
+          hidden: o.hidden,
+        ));
+      }
+    }
+    for (final e in intervals.entries) {
+      await _db.saveIntervalOverride(IntervalOverride(
+        vehicleId: _vehicle.id!,
+        maintenanceTypeId: e.key,
+        intervalKm: e.value.km,
+        intervalDays: e.value.days,
+        hidden: _overrides[e.key]?.hidden ?? false,
+        manualId: schedule.id,
+      ));
+    }
+    if (mounted) _snack(l10n.manualApplied(intervals.length));
     _load();
   }
 
@@ -618,6 +915,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                         maintenanceTypeId: o.maintenanceTypeId,
                         intervalKm: o.intervalKm,
                         intervalDays: o.intervalDays,
+                        manualId: o.manualId,
                       ));
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
@@ -775,7 +1073,7 @@ class _AppointmentCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('📝 ${appointment.notes}',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                 ),
               Align(
                 alignment: Alignment.centerRight,
@@ -917,7 +1215,7 @@ class _RecommendationCard extends StatelessWidget {
                           fontSize: 12,
                           color: rec.isDueSoonByUsage
                               ? color
-                              : Colors.grey.shade700,
+                              : Colors.grey.shade600,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -926,7 +1224,7 @@ class _RecommendationCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        l10n.ownInterval,
+                        rec.fromManual ? l10n.fromManual : l10n.ownInterval,
                         style: const TextStyle(
                             fontSize: 11, color: AppTheme.primaryColor),
                       ),
@@ -987,8 +1285,7 @@ class _RecommendationCard extends StatelessWidget {
   String _lastLabel(AppLocalizations l10n, DateFormat df) {
     switch (rec.baseline) {
       case BaselineMode.assumed:
-        return l10n.baselineAssumed(
-            df.format(rec.lastDate!), '${rec.lastKm}');
+        return l10n.baselineAssumed(df.format(rec.lastDate!), '${rec.lastKm}');
       case BaselineMode.known:
         return l10n.baselinePrevious([
           if (rec.lastDate != null) df.format(rec.lastDate!),
@@ -1148,7 +1445,7 @@ class _HistoryCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '📦 ${record.productsUsed}',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ],
             if (record.notes?.isNotEmpty == true) ...[

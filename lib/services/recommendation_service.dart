@@ -49,8 +49,8 @@ class RecommendationService {
     if (!vehicle.used || baseline == null) return null;
     return switch (baseline.mode) {
       BaselineMode.check => null,
-      BaselineMode.assumed => KmReading(
-          date: vehicle.acquiredDate, km: vehicle.acquiredOdometer),
+      BaselineMode.assumed =>
+        KmReading(date: vehicle.acquiredDate, km: vehicle.acquiredOdometer),
       BaselineMode.known => KmReading(
           date: baseline.date ?? vehicle.acquiredDate,
           km: baseline.km ?? vehicle.acquiredOdometer),
@@ -108,9 +108,8 @@ class RecommendationService {
             ? lastRecord.date.add(Duration(days: intervalDays))
             : now.add(const Duration(days: 99999));
       } else if (start != null) {
-        nextDueKm = intervalKm > 0
-            ? start.km + intervalKm
-            : vehicle.currentKm + 999999;
+        nextDueKm =
+            intervalKm > 0 ? start.km + intervalKm : vehicle.currentKm + 999999;
         nextDueDate = intervalDays > 0
             ? start.date.add(Duration(days: intervalDays))
             : now.add(const Duration(days: 99999));
@@ -146,19 +145,18 @@ class RecommendationService {
         nextDueKm: nextDueKm,
         nextDueDate: nextDueDate,
         currentKm: vehicle.currentKm,
-        estimatedKmDate:
-            !pendingRecord &&
-                    baseline?.mode != BaselineMode.check &&
-                    intervalKm > 0 &&
-                    nextDueKm > vehicle.currentKm
-                ? usage?.dateForKm(nextDueKm)
-                : null,
+        estimatedKmDate: !pendingRecord &&
+                baseline?.mode != BaselineMode.check &&
+                intervalKm > 0 &&
+                nextDueKm > vehicle.currentKm
+            ? usage?.dateForKm(nextDueKm)
+            : null,
         pendingRecord: pendingRecord,
         baseline: baseline?.mode,
         dueSoonKm: settings.dueSoonKm,
         dueSoonDays: settings.dueSoonDays,
-        hasOverride: override != null &&
-            (override.intervalKm != null || override.intervalDays != null),
+        hasOverride: override?.hasInterval ?? false,
+        fromManual: override?.fromManual ?? false,
         appointment: appointments[type.id],
       ));
     }

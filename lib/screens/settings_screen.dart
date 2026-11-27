@@ -144,8 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isScrollControlled: true,
       builder: (ctx) => SafeArea(
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          constraints:
+              BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -391,15 +391,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: 'es',
                 groupValue: currentLocale,
                 title: Text('🇦🇷  ${l10n.spanish}'),
-                onChanged: (_) => appState?.setLocale(const Locale('es')),
+                onChanged: (_) {
+                  // También acá, para que otro ajuste no lo pise al guardar.
+                  setState(() => _settings = _settings.copyWith(locale: 'es'));
+                  appState?.setLocale(const Locale('es'));
+                },
               ),
               const Divider(height: 1),
               RadioListTile<String>(
                 value: 'en',
                 groupValue: currentLocale,
                 title: Text('🇺🇸  ${l10n.english}'),
-                onChanged: (_) => appState?.setLocale(const Locale('en')),
+                onChanged: (_) {
+                  setState(() => _settings = _settings.copyWith(locale: 'en'));
+                  appState?.setLocale(const Locale('en'));
+                },
               ),
+            ]),
+            _SectionHeader(title: l10n.theme),
+            _card([
+              for (final (value, icon, label) in [
+                ('system', Icons.brightness_auto_outlined, l10n.themeSystem),
+                ('light', Icons.light_mode_outlined, l10n.themeLight),
+                ('dark', Icons.dark_mode_outlined, l10n.themeDark),
+              ]) ...[
+                if (value != 'system') const Divider(height: 1),
+                RadioListTile<String>(
+                  value: value,
+                  groupValue: s.themeMode,
+                  title: Row(children: [
+                    Icon(icon, size: 20),
+                    const SizedBox(width: 12),
+                    Text(label),
+                  ]),
+                  onChanged: (_) async {
+                    appState?.setThemeMode(value);
+                    await _update(_settings.copyWith(themeMode: value));
+                  },
+                ),
+              ],
             ]),
             _SectionHeader(title: l10n.aboutSection),
             _card([

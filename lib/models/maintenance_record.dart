@@ -112,6 +112,9 @@ class MaintenanceRecommendation {
   /// Intervalos propios de este vehículo en vez de los del tipo.
   final bool hasOverride;
 
+  /// Ese intervalo propio sale del manual de fábrica.
+  final bool fromManual;
+
   final Appointment? appointment;
 
   MaintenanceRecommendation({
@@ -132,6 +135,7 @@ class MaintenanceRecommendation {
     this.dueSoonKm = 500,
     this.dueSoonDays = 14,
     this.hasOverride = false,
+    this.fromManual = false,
     this.appointment,
   });
 
